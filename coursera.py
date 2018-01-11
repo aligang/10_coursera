@@ -100,12 +100,8 @@ def get_input_data():
         "Имя файла, куда нужно будет сохранить информацию ? : "
         "\n"
     )
-    return (
-        amount_of_courses_as_string,
-        total_amount_of_courses,
-        excel_workbook_name,
-        full_courses_list
-    )
+    return amount_of_courses_as_string, total_amount_of_courses, \
+        excel_workbook_name, full_courses_list
 
 
 if __name__ == '__main__':

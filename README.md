@@ -20,32 +20,28 @@ $ git clone https://github.com/<юзернейм-аккаунта-на-гите>
 *a.Данный код может быть исползован как самостоятельная программа,*  
 
 ```bash
-$  python3 coursera.py 
-Не указан аргумент - имя директории.
-Excel-файл будет записан в локальную директорию
+$  python3 coursera.py --amount 7 --directory 123 --filename file_with_courses
 
-Какое количество тренингов с сайта www.coursera.orgследует рассмотреть ?
-всего их 2602 (укажите целое число от 1 до 2602)
-4
+Данные о тренингах Coursera записаны в файл 123/file_with_courses.xlsx
 
-Имя файла, куда нужно будет сохранить информацию ? : 
-workbook4
-
-Данные о тренингах Coursera записаны в файл ./workbook4.xlsx
 ```
 
 ## 5.Какие функции могут быть переиспользованы в вашем коде
 Функция `get_full_courses_list` формирует полный список всех треннигов предлагаемых [www.coursera.org](https://www.coursera.org)
-Функция `get_input_data` запрашивает данные от пользователя и вызывает функцию `get_full_courses_list` тем самым обеспечивая программу необходимыми для работы данными
-Функция `choose_random_courses`  делает случайную выборку и формирует список url- страниц для тренингов, для которых  в последствии будет идти сбор интересующей информации
-Функция `write_courses_info_to_xlsx`  записывает всю собранную о случайных курсах информацию в excel-файл
+Функция `get_input_data` запрашивает данные от пользователя  тем самым обеспечивая программу необходимыми для работы данными
+Функция `choose_random_courses` делает случайную выборку и формирует список url- страниц для тренингов, для которых  в последствии будет идти сбор интересующей информации
+Функция `get_courses_info` собиратает ключевыю информаций с HTML-страниц, получаемых от функции `choose_random_courses`
+Функция `convert_courses_info_to_excel_workbook` конвертирует информацию, полученную от вуйнкции  `get_courses_info` в формат excel-объекта
+Функция `write_excel_workbook_to_file` excel-объект в excel-файл
 
 
 Импортировать и использовать функции коди можно  следующим образом:  
 ```python
 from coursera import get_full_courses_list
 from coursera import choose_random_courses
-from coursera import write_courses_info_to_xlsx
+from coursera import get_courses_info
+from coursera import convert_courses_info_to_excel_workbook
+from coursera import write_excel_workbook_to_file
 
 
 full_courses_list = get_full_courses_list()
@@ -53,9 +49,16 @@ courses_links_list = choose_random_courses(
     amount_of_courses,
     full_courses_list
 )
-trending_repos_info_list = get_open_issues(trending_repos_list)
-courses_info = get_courses_info(courses_links_list)
-write_courses_info_to_xlsx(courses_info, excel_workbook_file_path)
+raw_courses_info = get_courses_info(courses_links_list)
+excel_workbook_file_path = os.path.join(
+    path_to_directory,
+    file_name
+)
+excel_workbook = convert_courses_info_to_excel_workbook(raw_courses_info)
+excel_workbook_file_path_with_extension = write_excel_workbook_to_file(
+    excel_workbook,
+    excel_workbook_file_path
+))
 
 ```
 

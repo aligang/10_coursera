@@ -7,7 +7,7 @@ import bs4
 import re
 import openpyxl
 import os
-import sys
+import argparse
 from lxml import objectify
 
 
@@ -34,39 +34,106 @@ def choose_random_courses(amount_of_courses, full_courses_list):
 
 
 def get_courses_info(courses_links_list):
-    courses_info = [("url", "language", "date", "duration(weeks)")]
+    raw_courses_info = [(
+        "name", "url",
+        "language",
+        "date",
+        "duration(weeks)",
+        "rating"
+    )]
     for course_link in courses_links_list:
         course_page_info_response = requests.get(course_link)
+        course_page_info_response.encoding = "UTF-8"
         course_page_info = course_page_info_response.text
-        html_dom = bs4.BeautifulSoup(course_page_info, 'html.parser')
-        language_html = html_dom.find(
+        grabbed_page = bs4.BeautifulSoup(course_page_info, "html.parser")
+        language_raw_object = grabbed_page.find(
             "div",
             class_="rc-Language"
         )
-        start_date_html = html_dom.find(
+        start_date_raw_object = grabbed_page.find(
             "div",
             class_="startdate rc-StartDateString caption-text"
         )
-        duration_html = html_dom.find(
+        course_program_raw_object = grabbed_page.find(
             "div",
             class_="rc-WeekView"
         )
-        language = language_html.text
-        start_date = start_date_html.text
-        if duration_html:
-            duration = len(duration_html)
-        else:
-            duration = "N/A"
-        courses_info.append((course_link, language, start_date, duration))
-    return courses_info
+        rating_raw_object = grabbed_page.find(
+            "div",
+            class_="ratings-text bt3-hidden-xs"
+        )
+        course_name_raw_object = grabbed_page.find(
+            "h1",
+            class_="title display-3-text"
+        )
+        course_ratings = grabbed_page.find(
+            "div",
+            class_="ratings-text headline-2-text"
+        )
+        raw_courses_info.append(
+            (
+                course_name_raw_object,
+                course_link,
+                language_raw_object,
+                start_date_raw_object,
+                course_program_raw_object,
+                course_ratings
+            )
+        )
+    return raw_courses_info
 
 
-def write_courses_info_to_xlsx(courses_info, excel_workbook_file_path):
+def convert_courses_info_to_excel_workbook(raw_courses_info):
     excel_workbook = openpyxl.Workbook()
     work_sheet = excel_workbook.active
-    work_sheet.title = "coursera_offers"
-    for row in courses_info:
-        work_sheet.append(row)
+    work_sheet.title = "some_coursera_offers"
+    column_offset = 1
+    row_offset = 1
+    header_fill = openpyxl.styles.PatternFill(
+        patternType="solid",
+        fgColor="0000FF00"
+    )
+    header_font = openpyxl.styles.Font(
+        name="FreeMono",
+        size=13,
+        bold=True,
+        italic=False,
+        vertAlign=None,
+        underline=None,
+        strike=False,
+        color='FF000000'
+    )
+    regular_font = openpyxl.styles.Font(
+        name="FreeMono",
+        size=10,
+        bold=False,
+        italic=False,
+        vertAlign=None,
+        underline=None,
+        strike=False,
+        color='FF000000'
+    )
+    for row_id, row in enumerate(raw_courses_info, start=row_offset):
+        for column_id, cell_input_data in enumerate(row, start=column_offset):
+            cell = work_sheet.cell(column=column_id, row=row_id)
+            if row_id == row_offset:
+                cell.fill = header_fill
+                cell.font = header_font
+            else:
+                cell.font = regular_font
+            if isinstance(cell_input_data, str):
+                cell.value = cell_input_data
+            elif cell_input_data is None:
+                cell.value = "N/A"
+            elif (isinstance(cell_input_data, bs4.element.Tag) and
+                    cell_input_data.attrs["class"] == ["rc-WeekView"]):
+                cell.value = len(cell_input_data)
+            else:
+                cell.value = cell_input_data.get_text()
+    return excel_workbook
+
+
+def write_excel_workbook_to_file(excel_workbook, excel_workbook_file_path):
     if re.search("\.xlsx$", excel_workbook_file_path):
         excel_workbook_file_path_with_extension = excel_workbook_file_path
     else:
@@ -74,75 +141,85 @@ def write_courses_info_to_xlsx(courses_info, excel_workbook_file_path):
             excel_workbook_file_path
         )
     excel_workbook.save(excel_workbook_file_path_with_extension)
-    print(
-        "\n"
-        "Данные о тренингах Coursera записаны в файл {}".format(
-            excel_workbook_file_path_with_extension
-        )
-    )
+    return excel_workbook_file_path_with_extension
 
 
 def get_input_data():
-    full_courses_list = get_full_courses_list()
-    total_amount_of_courses = len(full_courses_list)
-    amount_of_courses_as_string = input(
-        "Какое количество тренингов с сайта www.coursera.org"
-        "следует рассмотреть ?"
-        "\n"
-        "всего их {} (укажите целое число от 1 до {})"
-        "\n".format(
-            total_amount_of_courses,
-            total_amount_of_courses
+    default_courses_amount = 10
+    max_courses_amount = 100
+    cli_parser = argparse.ArgumentParser(
+        description=(
+            "Программа для формирования списка курсов с www.coursera.org"
         )
     )
-    excel_workbook_name = input(
-        "\n"
-        "Имя файла, куда нужно будет сохранить информацию ? : "
-        "\n"
+    cli_parser.add_argument(
+        "--directory",
+        "-d",
+        type=str,
+        dest="path_to_directory",
+        metavar="target directory path",
+        default="./",
+        help=(
+            "путь до директории, "
+            "куда нужно будет сохранить файл с результатами"
+        )
     )
-    return amount_of_courses_as_string, total_amount_of_courses, \
-        excel_workbook_name, full_courses_list
+    cli_parser.add_argument(
+        "--filename",
+        "-f",
+        type=str,
+        dest="file_name",
+        metavar="target file name",
+        default="coursera.xlsx",
+        help="имя файла, куда нужно будет сохранить результаты"
+    )
+    cli_parser.add_argument(
+        "--amount",
+        "-a",
+        type=int,
+        dest="amount_of_courses",
+        metavar="amount of courses",
+        default=default_courses_amount,
+        choices=range(1, max_courses_amount),
+        help=(
+            "количество курсов, "
+            "которые нужно будет рассмотреть и записать"
+        )
+    )
+    input_arguments = cli_parser.parse_args()
+    path_to_directory = input_arguments.path_to_directory
+    file_name = input_arguments.file_name
+    amount_of_courses = input_arguments.amount_of_courses
+    return amount_of_courses, path_to_directory, file_name
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        directory_path = "./"
-        print(
-            "Не указан аргумент - имя директории."
-            "\n"
-            "Excel-файл будет записан в локальную директорию"
-            "\n"
-        )
-    else:
-        directory_path = sys.argv[1]
-    if not os.path.exists(directory_path):
+    amount_of_courses, path_to_directory, file_name = get_input_data()
+    if not os.path.exists(path_to_directory):
         sys.exit(
             "Такая директория не существует"
             "\n"
             "Перезапустите код, указав корректную директорию "
             "или не указывайте совсем"
             )
-    (amount_of_courses_as_string, total_amount_of_courses,
-     excel_workbook_name, full_courses_list) = get_input_data()
-    if not re.search("^\d+$", amount_of_courses_as_string):
-        sys.exit(
-            "Неверно указан формат начальных данных"
-            "\n"
-            "Количество рассматриваемых курсов должно быть "
-            "в формате целого положительного числа"
-        )
-    amount_of_courses = int(amount_of_courses_as_string)
-    if amount_of_courses > total_amount_of_courses:
-        sys.exit(
-            "Неверно указан формат начальных данных"
-            "\n"
-            "Количество рассматриваемых курсов не может"
-            "быть больше имеющегося количества курсов"
-        )
+    full_courses_list = get_full_courses_list()
     courses_links_list = choose_random_courses(
         amount_of_courses,
         full_courses_list
     )
-    courses_info = get_courses_info(courses_links_list)
-    excel_workbook_file_path = directory_path + excel_workbook_name
-    write_courses_info_to_xlsx(courses_info, excel_workbook_file_path)
+    raw_courses_info = get_courses_info(courses_links_list)
+    excel_workbook_file_path = os.path.join(
+        path_to_directory,
+        file_name
+    )
+    excel_workbook = convert_courses_info_to_excel_workbook(raw_courses_info)
+    excel_workbook_file_path_with_extension = write_excel_workbook_to_file(
+        excel_workbook,
+        excel_workbook_file_path
+    )
+    print(
+        "\n"
+        "Данные о тренингах Coursera записаны в файл {}".format(
+            excel_workbook_file_path_with_extension
+        )
+    )

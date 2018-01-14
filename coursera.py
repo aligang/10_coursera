@@ -116,11 +116,6 @@ def convert_courses_info_to_excel_workbook(raw_courses_info):
     for row_id, row in enumerate(raw_courses_info, start=row_offset):
         for column_id, cell_input_data in enumerate(row, start=column_offset):
             cell = work_sheet.cell(column=column_id, row=row_id)
-            if row_id == row_offset:
-                cell.fill = header_fill
-                cell.font = header_font
-            else:
-                cell.font = regular_font
             if isinstance(cell_input_data, str):
                 cell.value = cell_input_data
             elif cell_input_data is None:
@@ -202,21 +197,7 @@ if __name__ == '__main__':
             "Перезапустите код, указав корректную директорию "
             "или не указывайте совсем"
             )
-    full_courses_list = get_full_courses_list()
-    courses_links_list = choose_random_courses(
-        amount_of_courses,
-        full_courses_list
-    )
-    raw_courses_info = get_courses_info(courses_links_list)
-    excel_workbook_file_path = os.path.join(
-        path_to_directory,
-        file_name
-    )
-    excel_workbook = convert_courses_info_to_excel_workbook(raw_courses_info)
-    excel_workbook_file_path_with_extension = write_excel_workbook_to_file(
-        excel_workbook,
-        excel_workbook_file_path
-    )
+Kt
     print(
         "\n"
         "Данные о тренингах Coursera записаны в файл {}".format(

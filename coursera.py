@@ -11,10 +11,25 @@ import argparse
 from lxml import objectify
 
 
-def get_full_courses_list():
-    url = "https://www.coursera.org/sitemap~www~courses.xml"
-    coursera_courses_response = requests.get(url)
-    coursera_courses_xml_as_bytecode = coursera_courses_response.content
+def send_get_request(url, representation="str", encoding="UTF-8"):
+    get_response = requests.get(url)
+    if representation == "byte":
+        get_response_data = get_response.content
+    else:
+        get_response.encoding = encoding
+        get_response_data = get_response.text
+    return get_response_data
+
+
+def get_xml_with_full_courses_list():
+    xml_with_full_courses_list = send_get_request(
+        "https://www.coursera.org/sitemap~www~courses.xml",
+        "byte"
+    )
+    return xml_with_full_courses_list
+
+
+def parse_xml_with_full_courses_list(coursera_courses_xml_as_bytecode):
     urlset_xml_root_object = objectify.fromstring(
         coursera_courses_xml_as_bytecode
     )
@@ -33,53 +48,56 @@ def choose_random_courses(amount_of_courses, full_courses_list):
     return courses_links_list
 
 
+def grab_data_from_html_page(course_page_info):
+    grabbed_page = bs4.BeautifulSoup(course_page_info, "html.parser")
+    language_raw_object = grabbed_page.find(
+        "div",
+        class_="rc-Language"
+    )
+    start_date_raw_object = grabbed_page.find(
+        "div",
+        class_="startdate rc-StartDateString caption-text"
+    )
+    course_program_raw_object = grabbed_page.find(
+        "div",
+        class_="rc-WeekView"
+    )
+    rating_raw_object = grabbed_page.find(
+        "div",
+        class_="ratings-text bt3-hidden-xs"
+    )
+    course_name_raw_object = grabbed_page.find(
+        "h1",
+        class_="title display-3-text"
+    )
+    course_ratings_raw_object = grabbed_page.find(
+        "div",
+        class_="ratings-text headline-2-text"
+    )
+    raw_page_info = [
+        course_name_raw_object,
+        language_raw_object,
+        start_date_raw_object,
+        course_program_raw_object,
+        course_ratings_raw_object
+    ]
+    return raw_page_info
+
+
 def get_courses_info(courses_links_list):
     raw_courses_info = [(
-        "name", "url",
+        "url", "name",
         "language",
         "date",
         "duration(weeks)",
         "rating"
     )]
     for course_link in courses_links_list:
-        course_page_info_response = requests.get(course_link)
-        course_page_info_response.encoding = "UTF-8"
-        course_page_info = course_page_info_response.text
-        grabbed_page = bs4.BeautifulSoup(course_page_info, "html.parser")
-        language_raw_object = grabbed_page.find(
-            "div",
-            class_="rc-Language"
-        )
-        start_date_raw_object = grabbed_page.find(
-            "div",
-            class_="startdate rc-StartDateString caption-text"
-        )
-        course_program_raw_object = grabbed_page.find(
-            "div",
-            class_="rc-WeekView"
-        )
-        rating_raw_object = grabbed_page.find(
-            "div",
-            class_="ratings-text bt3-hidden-xs"
-        )
-        course_name_raw_object = grabbed_page.find(
-            "h1",
-            class_="title display-3-text"
-        )
-        course_ratings = grabbed_page.find(
-            "div",
-            class_="ratings-text headline-2-text"
-        )
-        raw_courses_info.append(
-            (
-                course_name_raw_object,
-                course_link,
-                language_raw_object,
-                start_date_raw_object,
-                course_program_raw_object,
-                course_ratings
-            )
-        )
+        course_page_info = send_get_request(course_link)
+        raw_page_info = grab_data_from_html_page(course_page_info)
+        raw_page_info_with_url = [course_link]
+        raw_page_info_with_url.extend(raw_page_info)
+        raw_courses_info.append(raw_page_info_with_url)
     return raw_courses_info
 
 
@@ -129,7 +147,7 @@ def convert_courses_info_to_excel_workbook(raw_courses_info):
 
 
 def write_excel_workbook_to_file(excel_workbook, excel_workbook_file_path):
-    if re.search("\.xlsx$", excel_workbook_file_path):
+    if excel_workbook_file_path.endswith("xlsx"):
         excel_workbook_file_path_with_extension = excel_workbook_file_path
     else:
         excel_workbook_file_path_with_extension = "{}.xlsx".format(
@@ -139,7 +157,7 @@ def write_excel_workbook_to_file(excel_workbook, excel_workbook_file_path):
     return excel_workbook_file_path_with_extension
 
 
-def get_input_data():
+def parse_cli():
     default_courses_amount = 10
     max_courses_amount = 100
     cli_parser = argparse.ArgumentParser(
@@ -181,23 +199,26 @@ def get_input_data():
             "которые нужно будет рассмотреть и записать"
         )
     )
-    input_arguments = cli_parser.parse_args()
-    path_to_directory = input_arguments.path_to_directory
-    file_name = input_arguments.file_name
-    amount_of_courses = input_arguments.amount_of_courses
-    return amount_of_courses, path_to_directory, file_name
+    cli_arguments = cli_parser.parse_args()
+    return cli_arguments
 
 
 if __name__ == '__main__':
-    amount_of_courses, path_to_directory, file_name = get_input_data()
+    cli_arguments = parse_cli()
+    path_to_directory = cli_arguments.path_to_directory
+    file_name = cli_arguments.file_name
+    amount_of_courses = cli_arguments.amount_of_courses
     if not os.path.exists(path_to_directory):
         sys.exit(
             "Такая директория не существует"
             "\n"
             "Перезапустите код, указав корректную директорию "
             "или не указывайте совсем"
-            )
-    full_courses_list = get_full_courses_list()
+        )
+    xml_with_full_courses_list = get_xml_with_full_courses_list()
+    full_courses_list = parse_xml_with_full_courses_list(
+        xml_with_full_courses_list
+    )
     courses_links_list = choose_random_courses(
         amount_of_courses,
         full_courses_list

@@ -27,14 +27,13 @@ $  python3 coursera.py --amount 7 --directory 123 --filename file_with_courses
 ```
 
 ## 5.Какие функции могут быть переиспользованы в вашем коде
-Функция `send_get_request` формирует http-get вызов и возваращет содержимое пейлоуда
-Функция `get_xml_with_full_courses_list` переиспользует функцию `send_get_request` и информацию о курсах на [www.coursera.org](https://www.coursera.org в xml формате
-Функция `parse_xml_with_full_courses_list` данные, полученные от функции `get_xml_with_full_courses_list` и формирует список курсов в формате string
-Функция `get_input_data` запрашивает данные от пользователя  тем самым обеспечивая программу необходимыми для работы данными
+Функция `fetch_response_of_get_request_as_bytecode` формирует http-get вызов и возваращет содержимое пейлоуда
+Функция `parse_xml_with_full_courses_list` парсит список курсов в формате xml  и формирует список курсов в формате string
+Функция `create_cli_parser_and_collect_cli_arguments` запрашивает данные от пользователя  тем самым обеспечивая программу необходимыми для работы данными
 Функция `choose_random_courses` делает случайную выборку и формирует список url- страниц для тренингов, для которых  в последствии будет идти сбор интересующей информации
-Функция `get_courses_info` формирует список ключевых параметров cтраниц тренингов -   использует адреса url страниц тренингов, получаемых от `choose_random_courses`, отправляет запросы на эти адреса (переисопльзуюя функцию `send_get_request`), а полученную HTM-структуру парсит, вызывая функцию `grab_data_from_html_page` 
-Функция `grab_data_from_html_page` собиратает ключевыю информаций с HTML-страниц
-Функция `convert_courses_info_to_excel_workbook` конвертирует информацию, полученную от вуйнкции  `get_courses_info` в формат excel-объекта
+Функция `get_raw_courses_data` формирует список ключевых параметров cтраниц тренингов -   использует адреса url страниц тренингов, получаемых от `choose_random_courses`, отправляет запросы на эти адреса (переисопльзуюя функцию `fetch_response_of_get_request_as_bytecode`), а полученную HTM-структуру парсит, вызывая функцию `grab_data_from_html_page` 
+Функция `grab_bs4_objects_from_html_page` собиратает ключевыю информаций с HTML-страниц
+Функция `convert_raw_courses_data_to_excel_workbook` конвертирует информацию, полученную от вуйнкции  `fetch_response_of_get_request_as_bytecode` в формат excel-объекта
 Функция `write_excel_workbook_to_file` записывает excel-объект в excel-файл
 
 

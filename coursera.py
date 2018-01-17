@@ -4,29 +4,16 @@
 import random
 import requests
 import bs4
-import re
 import openpyxl
 import os
 import argparse
 from lxml import objectify
 
 
-def send_get_request(url, representation="str", encoding="UTF-8"):
-    get_response = requests.get(url)
-    if representation == "byte":
-        get_response_data = get_response.content
-    else:
-        get_response.encoding = encoding
-        get_response_data = get_response.text
-    return get_response_data
-
-
-def get_xml_with_full_courses_list():
-    xml_with_full_courses_list = send_get_request(
-        "https://www.coursera.org/sitemap~www~courses.xml",
-        "byte"
-    )
-    return xml_with_full_courses_list
+def fetch_response_of_get_request_as_bytecode(url):
+    response = requests.get(url)
+    response_data = response.content
+    return response_data
 
 
 def parse_xml_with_full_courses_list(coursera_courses_xml_as_bytecode):
@@ -48,8 +35,8 @@ def choose_random_courses(amount_of_courses, full_courses_list):
     return courses_links_list
 
 
-def grab_data_from_html_page(course_page_info):
-    grabbed_page = bs4.BeautifulSoup(course_page_info, "html.parser")
+def grab_bs4_objects_from_html_page(course_page_html):
+    grabbed_page = bs4.BeautifulSoup(course_page_html, "html.parser")
     language_raw_object = grabbed_page.find(
         "div",
         class_="rc-Language"
@@ -74,18 +61,18 @@ def grab_data_from_html_page(course_page_info):
         "div",
         class_="ratings-text headline-2-text"
     )
-    raw_page_info = [
+    raw_page_data = [
         course_name_raw_object,
         language_raw_object,
         start_date_raw_object,
         course_program_raw_object,
         course_ratings_raw_object
     ]
-    return raw_page_info
+    return raw_page_data
 
 
-def get_courses_info(courses_links_list):
-    raw_courses_info = [(
+def get_raw_courses_data(courses_links_list):
+    raw_courses_data = [(
         "url", "name",
         "language",
         "date",
@@ -93,15 +80,19 @@ def get_courses_info(courses_links_list):
         "rating"
     )]
     for course_link in courses_links_list:
-        course_page_info = send_get_request(course_link)
-        raw_page_info = grab_data_from_html_page(course_page_info)
-        raw_page_info_with_url = [course_link]
-        raw_page_info_with_url.extend(raw_page_info)
-        raw_courses_info.append(raw_page_info_with_url)
-    return raw_courses_info
+        course_page_html = fetch_response_of_get_request_as_bytecode(
+            course_link
+        )
+        raw_page_data = grab_bs4_objects_from_html_page(
+            course_page_html
+        )
+        raw_page_data_with_url = [course_link]
+        raw_page_data_with_url.extend(raw_page_data)
+        raw_courses_data.append(raw_page_data_with_url)
+    return raw_courses_data
 
 
-def convert_courses_info_to_excel_workbook(raw_courses_info):
+def convert_raw_courses_data_to_excel_workbook(raw_courses_data):
     excel_workbook = openpyxl.Workbook()
     work_sheet = excel_workbook.active
     work_sheet.title = "some_coursera_offers"
@@ -131,7 +122,7 @@ def convert_courses_info_to_excel_workbook(raw_courses_info):
         strike=False,
         color='FF000000'
     )
-    for row_id, row in enumerate(raw_courses_info, start=row_offset):
+    for row_id, row in enumerate(raw_courses_data, start=row_offset):
         for column_id, cell_input_data in enumerate(row, start=column_offset):
             cell = work_sheet.cell(column=column_id, row=row_id)
             if isinstance(cell_input_data, str):
@@ -146,18 +137,7 @@ def convert_courses_info_to_excel_workbook(raw_courses_info):
     return excel_workbook
 
 
-def write_excel_workbook_to_file(excel_workbook, excel_workbook_file_path):
-    if excel_workbook_file_path.endswith("xlsx"):
-        excel_workbook_file_path_with_extension = excel_workbook_file_path
-    else:
-        excel_workbook_file_path_with_extension = "{}.xlsx".format(
-            excel_workbook_file_path
-        )
-    excel_workbook.save(excel_workbook_file_path_with_extension)
-    return excel_workbook_file_path_with_extension
-
-
-def parse_cli():
+def create_cli_parser_and_collect_cli_arguments():
     default_courses_amount = 10
     max_courses_amount = 100
     cli_parser = argparse.ArgumentParser(
@@ -204,7 +184,7 @@ def parse_cli():
 
 
 if __name__ == '__main__':
-    cli_arguments = parse_cli()
+    cli_arguments = create_cli_parser_and_collect_cli_arguments()
     path_to_directory = cli_arguments.path_to_directory
     file_name = cli_arguments.file_name
     amount_of_courses = cli_arguments.amount_of_courses
@@ -215,7 +195,9 @@ if __name__ == '__main__':
             "Перезапустите код, указав корректную директорию "
             "или не указывайте совсем"
         )
-    xml_with_full_courses_list = get_xml_with_full_courses_list()
+    xml_with_full_courses_list = fetch_response_of_get_request_as_bytecode(
+        "https://www.coursera.org/sitemap~www~courses.xml"
+    )
     full_courses_list = parse_xml_with_full_courses_list(
         xml_with_full_courses_list
     )
@@ -223,16 +205,21 @@ if __name__ == '__main__':
         amount_of_courses,
         full_courses_list
     )
-    raw_courses_info = get_courses_info(courses_links_list)
+    raw_courses_data = get_raw_courses_data(courses_links_list)
     excel_workbook_file_path = os.path.join(
         path_to_directory,
         file_name
     )
-    excel_workbook = convert_courses_info_to_excel_workbook(raw_courses_info)
-    excel_workbook_file_path_with_extension = write_excel_workbook_to_file(
-        excel_workbook,
-        excel_workbook_file_path
+    if excel_workbook_file_path.endswith("xlsx"):
+        excel_workbook_file_path_with_extension = excel_workbook_file_path
+    else:
+        excel_workbook_file_path_with_extension = "{}.xlsx".format(
+            excel_workbook_file_path
+        )
+    excel_workbook = convert_raw_courses_data_to_excel_workbook(
+        raw_courses_data
     )
+    excel_workbook.save(excel_workbook_file_path_with_extension)
     print(
         "\n"
         "Данные о тренингах Coursera записаны в файл {}".format(

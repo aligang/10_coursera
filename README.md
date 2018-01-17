@@ -27,45 +27,42 @@ $  python3 coursera.py --amount 7 --directory 123 --filename file_with_courses
 ```
 
 ## 5.Какие функции могут быть переиспользованы в вашем коде
-Функция `fetch_response_of_get_request_as_bytecode` формирует http-get вызов и возваращет содержимое пейлоуда
-Функция `parse_xml_with_full_courses_list` парсит список курсов в формате xml  и формирует список курсов в формате string
-Функция `create_cli_parser_and_collect_cli_arguments` запрашивает данные от пользователя  тем самым обеспечивая программу необходимыми для работы данными
-Функция `choose_random_courses` делает случайную выборку и формирует список url- страниц для тренингов, для которых  в последствии будет идти сбор интересующей информации
-Функция `get_raw_courses_data` формирует список ключевых параметров cтраниц тренингов -   использует адреса url страниц тренингов, получаемых от `choose_random_courses`, отправляет запросы на эти адреса (переисопльзуюя функцию `fetch_response_of_get_request_as_bytecode`), а полученную HTM-структуру парсит, вызывая функцию `grab_data_from_html_page` 
-Функция `grab_bs4_objects_from_html_page` собиратает ключевыю информаций с HTML-страниц
-Функция `convert_raw_courses_data_to_excel_workbook` конвертирует информацию, полученную от вуйнкции  `fetch_response_of_get_request_as_bytecode` в формат excel-объекта
+Функция `fetch_get_response` формирует http-get вызов и возваращет содержимое пейлоуда
+Функция `extract_full_courses_list` парсит список курсов в формате xml  и формирует список курсов в формате string
+Функция `create_cli_parser` запрашивает данные от пользователя  тем самым обеспечивая программу необходимыми для работы данными
+Функция `choose_some_courses` делает случайную выборку и формирует список url- страниц для тренингов, для которых  в последствии будет идти сбор интересующей информации                 
+Функция `get_courses_data` формирует список ключевых параметров cтраниц тренингов -   использует адреса url страниц тренингов, получаемых от `choose_courses`, отправляет запросы  на эти адреса (переисопльзуюя функцию `fetch_get_response`), а полученную HTM-структуру парсит, вызывая функцию `grab_data_from_html_page` 
+Функция `grab_data_from_html_page` собиратает ключевыю информаций с HTML-страниц
+Функция `put_courses_data_to_excel_workbook` конвертирует информацию, полученную от функции  `fetch_get_response` в формат excel-объекта
 Функция `write_excel_workbook_to_file` записывает excel-объект в excel-файл
 
 
 Импортировать и использовать функции коди можно  следующим образом:  
 ```python
-from coursera import send_get_request
-from coursera import choose_random_courses
-from coursera import get_xml_with_full_courses_list
-from coursera import get_courses_info
-from coursera import get_courses_info
+from coursera import fetch_get_responce
+from coursera import choose_courses
+from coursera import get_courses_data
 from coursera import grab_data_from_html_page
-from coursera import write_excel_workbook_to_file
+from coursera import put_courses_data_to_excel_workbook
 
 
-xml_with_full_courses_list = get_xml_with_full_courses_list()
-    full_courses_list = parse_xml_with_full_courses_list(
-        xml_with_full_courses_list
-    )
-    courses_links_list = choose_random_courses(
-        amount_of_courses,
-        full_courses_list
-    )
-    raw_courses_info = get_courses_info(courses_links_list)
-    excel_workbook_file_path = os.path.join(
-        path_to_directory,
-        file_name
-    )
-    excel_workbook = convert_courses_info_to_excel_workbook(raw_courses_info)
-    excel_workbook_file_path_with_extension = write_excel_workbook_to_file(
-        excel_workbook,
-        excel_workbook_file_path
-    )
+full_courses_list = extract_full_courses_list(
+    full_courses_list_as_xml
+)
+some_courses_links = choose_courses(
+    amount_of_courses,
+    full_courses_list
+)
+courses_data = get_courses_data(some_courses_links)
+excel_workbook_file_path = os.path.join(
+    path_to_directory,
+    file_name
+)
+excel_workbook = put_courses_data_to_excel_workbook(
+    courses_data
+)
+excel_workbook.save(excel_workbook_file_path_with_extension)
+
 
 ```
 

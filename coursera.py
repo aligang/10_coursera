@@ -68,7 +68,7 @@ def grab_data_from_html_page(course_page_html):
         course_program_bs4_object,
         course_ratings_bs4_object
     ]
-    data_from_page =  map(get_text_from_bs4_object, bs4_objects_of_interest)
+    data_from_page = map(get_text_from_bs4_object, bs4_objects_of_interest)
     return data_from_page
 
 

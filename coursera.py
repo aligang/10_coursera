@@ -16,9 +16,9 @@ def fetch_response_content(url):
     return response_data
 
 
-def extract_full_courses_list(coursera_courses_xml_as_bytecode):
+def extract_full_courses_list(coursera_courses_xml_сontent):
     urlset_xml_root_object = objectify.fromstring(
-        coursera_courses_xml_as_bytecode
+        coursera_courses_xml_сontent
     )
     full_courses_list = [
         url_object.loc.text
@@ -27,7 +27,7 @@ def extract_full_courses_list(coursera_courses_xml_as_bytecode):
     return full_courses_list
 
 
-def choose_courses(amount_of_courses, full_courses_list):
+def choose_random_courses(amount_of_courses, full_courses_list):
     courses_links_list = random.sample(
         full_courses_list,
         amount_of_courses
@@ -35,40 +35,40 @@ def choose_courses(amount_of_courses, full_courses_list):
     return courses_links_list
 
 
-def grab_data_from_html_page(course_page_html):
-    grabbed_page = bs4.BeautifulSoup(course_page_html, "html.parser")
-    language_bs4_object = grabbed_page.find(
+def gather_data_from_html_page(course_page_html):
+    processed_page = bs4.BeautifulSoup(course_page_html, "html.parser")
+    language = processed_page.find(
         "div",
         class_="rc-Language"
     )
-    start_date_bs4_object = grabbed_page.find(
+    start_date = processed_page.find(
         "div",
         class_="startdate rc-StartDateString caption-text"
     )
-    course_program_bs4_object = grabbed_page.find(
+    course_program = processed_page.find(
         "div",
         class_="rc-WeekView"
     )
-    rating_bs4_object = grabbed_page.find(
+    rating = processed_page.find(
         "div",
         class_="ratings-text bt3-hidden-xs"
     )
-    course_name_bs4_object = grabbed_page.find(
+    course_name = processed_page.find(
         "h1",
         class_="title display-3-text"
     )
-    course_ratings_bs4_object = grabbed_page.find(
+    course_ratings = processed_page.find(
         "div",
         class_="ratings-text headline-2-text"
     )
-    bs4_objects_of_interest = [
-        course_name_bs4_object,
-        language_bs4_object,
-        start_date_bs4_object,
-        course_program_bs4_object,
-        course_ratings_bs4_object
+    raw_data_of_interest = [
+        course_name,
+        language,
+        start_date,
+        course_program,
+        course_ratings
     ]
-    data_from_page = map(get_text_from_bs4_object, bs4_objects_of_interest)
+    data_from_page = map(get_text_from_bs4_object, raw_data_of_interest)
     return data_from_page
 
 
@@ -76,7 +76,7 @@ def get_text_from_bs4_object(bs4_object):
     if bs4_object:
         text = bs4_object.get_text()
     else:
-        text = bs4_object
+        text = None
     return text
 
 
@@ -92,7 +92,7 @@ def get_courses_data(courses_links_list):
         course_page_html = fetch_response_content(
             course_link
         )
-        data_from_page = grab_data_from_html_page(
+        data_from_page = gather_data_from_html_page(
             course_page_html
         )
         data_from_page_with_url = [course_link]
@@ -202,10 +202,11 @@ if __name__ == "__main__":
     full_courses_list_as_xml = fetch_response_content(
         "https://www.coursera.org/sitemap~www~courses.xml"
     )
+    print(full_courses_list_as_xml)
     full_courses_list = extract_full_courses_list(
         full_courses_list_as_xml
     )
-    some_courses_links = choose_courses(
+    some_courses_links = choose_random_courses(
         amount_of_courses,
         full_courses_list
     )
